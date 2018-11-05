@@ -1,6 +1,7 @@
 from flask import Flask, request, abort
 import json
 
+from bot import config
 from bot.gitlab.webhooks import Issue
 from bot.gitlab import GitlabApi
 app = Flask(__name__)
