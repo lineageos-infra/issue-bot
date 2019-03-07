@@ -54,34 +54,72 @@ def validate(description):
         errors.append(label_data[label]["error"])
     return labels, errors
 
-def main():
-    while True:
-        resp = requests.get(f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=None", headers=headers)
-        if resp.status_code != 200:
-            print(f"Error getting issues - {resp.json()}")
-        else:
-            for issue in resp.json():
-                labels, errors = validate(issue["description"])
-                reply = None
-                if errors:
-                    labels.append("invalid")
-                    reply = [
-                        "Hi! It appears you didn't read or follow the provided issue template. Your issue has been marked as invalid. You can either edit your issue to include the requested fields, or create a new issue following the provided template. For more information, please see https://wiki.lineageos.org/bugreport-howto.html",
-                        "",
-                        "Problems:",
-                        ""
-                    ] + errors + ["", "(this action was performed by a bot)"]
-                if reply:
-                    resp = requests.post(f"https://gitlab.com/api/v4/projects/{project}/issues/{issue['iid']}/notes", json={"body": "\n".join(reply)}, headers=headers)
-                    if resp.status_code != 201:
-                        print(f"Error replying - ${resp.json()}")
-                # label issue
-                resp = requests.put(f"https://gitlab.com/api/v4/projects/{project}/issues/{issue['iid']}", json={'labels': ','.join(labels)}, headers=headers)
-                if resp.status_code != 200:
-                    print(f"Error updating labels - ${resp.json()}")
-                print(issue["web_url"])
-        time.sleep(60)
+def post_reply(iid, reply):
+    resp = requests.post(f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}/notes", json={"body": "\n".join(reply)}, headers=headers)
+    if resp.status_code != 201:
+        print(f"Error replying - ${resp.json()}")
+
+def edit_issue(iid, edits):
+    resp = requests.put(f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}", json=edits, headers=headers)
+    if resp.status_code != 200:
+        print(f"Error updating labels - ${resp.json()}")
+
+def process_new():
+    resp = requests.get(f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=None", headers=headers)
+    if resp.status_code != 200:
+        print(f"Error getting issues - {resp.json()}")
+        return
+    for issue in resp.json():
+        labels, errors = validate(issue["description"])
+        reply = None
+        if errors:
+            labels.append("invalid")
+            reply = [
+                "Hi! It appears you didn't read or follow the provided issue template. Your issue has been marked as invalid. You can either edit your issue to include the requested fields and reopen it, or create a new issue following the provided template. For more information, please see https://wiki.lineageos.org/bugreport-howto.html",
+                "",
+                "Problems:",
+                ""
+            ] + errors + ["", "(this action was performed by a bot)"]
+        if reply:
+            post_reply(issue["iid"], reply)
+        # edit issue
+        edits = {
+            "labels": ",".join(labels)
+        }
+        if "invalid" in labels:
+            edits["state_event"] = "close"
+        edit_issue(issue["iid"], edits)
+        print(f"new: {issue['web_url']}")
+
+def process_invalid():
+    resp = requests.get(f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=invalid", headers=headers)
+    if resp.status_code != 200:
+        print(f"Error getting invalid issues - {resp.json()}")
+        return
+    for issue in resp.json():
+        labels, errors = validate(issue["description"])
+        reply = None
+        if errors:
+            labels.append("invalid")
+            reply = [
+                "Hi! It appears this issue still has problems - please fix the things below and reopen it!",
+                "",
+                "Problems:",
+                ""
+            ] + errors + ["", "(this action was performed by a bot)"]
+        if reply:
+            post_reply(issue["iid"], reply)
+        edits = {
+            "labels": ",".join(labels)
+        }
+        if "invalid" in labels:
+            edits["state_event"] = "close"
+        edit_issue(issue["iid"], edits)
+        print(f"invalid: {issue['web_url']}")
 
 if __name__ == "__main__":
-    main()
+    while True:
+        process_new()
+        process_invalid()
+        time.sleep(60)
 
