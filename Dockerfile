@@ -1,10 +1,9 @@
 FROM python:3.6
 
-COPY . /app
+COPY requirements.txt /app/
 WORKDIR /app
-RUN pip install gunicorn
-RUN pip install .
+RUN pip install -r requirements.txt
 
-RUN python test.py
+COPY . /app
 
-CMD gunicorn -b 0.0.0.0:8080 bot.app:app
+CMD python bot/app.py
