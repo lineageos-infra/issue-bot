@@ -4,4 +4,4 @@ COPY . /app
 WORKDIR /app
 RUN pip install .
 
-CMD python bot/app.py
+CMD python -m bot.app
