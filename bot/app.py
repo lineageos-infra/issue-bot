@@ -9,7 +9,7 @@ from bot import config
 headers = {"Private-Token": config.GITLAB_TOKEN}
 project = 9202919
 options = {
-    'version': ["lineage-17.1", "lineage-18.1"],
+    'version': ["17.1", "18.1"],
     'device':  [x["model"] for x in requests.get("https://raw.githubusercontent.com/LineageOS/hudson/master/updater/devices.json").json()]
 }
 
@@ -42,9 +42,10 @@ def validate(description):
             label = label[1:]
             if value:
                 seen.append(label)
+            already_valid, value = validate_version(label, value)
             if label in label_data.keys():
                 if label_data[label]["data"]:
-                    if value in options[label]:
+                    if value in options[label] or already_valid:
                         labels.append(f"{label}:{value}")
                     elif value:
                         errors.append(f"- {value} is not a valid {label}. Supported values are {options[label]}")
@@ -54,6 +55,17 @@ def validate(description):
     for label in missing_labels:
         errors.append(label_data[label]["error"])
     return labels, errors
+
+def validate_version(label, value):
+    if label != "version" or not value:
+        return False, value
+    match = re.search("(lineage-)?(\d{2}\.\d{1})(-20\d{6}-NIGHTLY-.+(\.zip)?)?", value)
+    version = None
+    if match:
+        version = match.group(2)
+    if version in options[label]:
+        return True, f"lineage-{version}"
+    return False, value
 
 def post_reply(iid, reply):
     resp = requests.post(f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}/notes", json={"body": "\n".join(reply)}, headers=headers)
