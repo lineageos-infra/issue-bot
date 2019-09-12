@@ -39,16 +39,17 @@ def validate(description):
     for line in re.sub("(<!--.*?-->)", "", description, flags=re.DOTALL).splitlines():
         if line.startswith("/") and " " in line:
             label, value = line.split(" ")[0:2]
+            label = label[1:]
             if value:
-                seen.append(label[1:])
-            if label[1:] in label_data.keys():
-                if label_data[label[1:]]["data"]:
-                    if value in options[label[1:]]:
-                        labels.append(f"{label[1:]}:{value}")
+                seen.append(label)
+            if label in label_data.keys():
+                if label_data[label]["data"]:
+                    if value in options[label]:
+                        labels.append(f"{label}:{value}")
                     elif value:
-                        errors.append(f"- {value} is not a valid {label[1:]}. Supported values are {options[label[1:]]}")
+                        errors.append(f"- {value} is not a valid {label}. Supported values are {options[label]}")
                 else:
-                    labels.append(f"{label[1:]}")
+                    labels.append(f"{label}")
     missing_labels = label_data.keys() - set(seen)
     for label in missing_labels:
         errors.append(label_data[label]["error"])
