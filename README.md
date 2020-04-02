@@ -8,7 +8,7 @@ This can be multiple lines.
 The footer needs to look like:
 
 /device mako
-/verson lineage-15.1
+/verson lineage-17.1
 /date 2018-04-04
 /baseband OPPM.foo.bar
 /kernel full string from uname -a

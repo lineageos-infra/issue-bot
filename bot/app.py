@@ -9,7 +9,7 @@ from bot import config
 headers = {"Private-Token": config.GITLAB_TOKEN}
 project = 9202919
 options = {
-    'version': ["lineage-15.1", "lineage-16.0"],
+    'version': ["lineage-16.0", "lineage-17.1"],
     'device':  [x["model"] for x in requests.get("https://raw.githubusercontent.com/LineageOS/hudson/master/updater/devices.json").json()]
 }
 
@@ -22,7 +22,7 @@ label_data = {
     },
     "version": {
         "data": True,
-        "error": "- The version of LineageOS running on your device is required (include /version (lineage-15.1,lineage-16.0)."
+        "error": "- The version of LineageOS running on your device is required (include /version (lineage-16.0,lineage-17.1)."
     },
     "date": {
         "data": False,
