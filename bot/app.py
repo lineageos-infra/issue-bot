@@ -3,17 +3,14 @@ import json
 import re
 import time
 
+from datetime import datetime, timedelta
+from threading import Timer
 from urllib.parse import urlencode
 from bot import config
 
 headers = {"Private-Token": config.GITLAB_TOKEN}
 project = 9202919
-options = {
-    'version': ["17.1", "18.1"],
-    'device':  [x["model"] for x in requests.get("https://raw.githubusercontent.com/LineageOS/hudson/master/updater/devices.json").json()]
-}
-
-print(options)
+options = {"version": [], "device": []}
 
 label_data = {
     "device": {
@@ -22,7 +19,7 @@ label_data = {
     },
     "version": {
         "data": True,
-        "error": "- The version of LineageOS running on your device is required (include /version (lineage-17.1,lineage-18.1)."
+        "error": "- The version of LineageOS running on your device is required (include /version lineage-xx.x)."
     },
     "date": {
         "data": False,
@@ -130,7 +127,61 @@ def process_invalid():
         edit_issue(issue["iid"], edits)
         print(f"invalid: {issue['web_url']}")
 
+
+def load_valid_devices():
+    global options
+    new_options = [
+        x["model"]
+        for x in requests.get(
+            "https://raw.githubusercontent.com/LineageOS/hudson/master/updater/devices.json"
+        ).json()
+    ]
+    if new_options:
+        options["device"] = new_options
+
+
+def load_valid_versions():
+    global options
+    r = requests.get(
+        "https://raw.githubusercontent.com/LineageOS/hudson/master/lineage-build-targets"
+    )
+    new_options = []
+    for line in r.text.splitlines():
+        if line is None or line == "" or line.startswith("#"):
+            continue
+        result = re.match("^([\w\d]*?) (\w*?) ([\w\d\-.]*) (\w*)", line)
+        if result:
+            branch = result.group(3).replace("lineage-", "")
+            if not branch in new_options:
+                new_options.append(branch)
+    if new_options:
+        options["version"] = new_options
+
+
+def load_options():
+    load_valid_versions()
+    load_valid_devices()
+
+    # Do this again one day later once we got valid data
+    if not options["version"] or not options["device"]:
+        return
+
+    x = datetime.today()
+    y = x + timedelta(days=1)
+    delta_t = y - x
+    secs = delta_t.total_seconds()
+    t = Timer(secs, load_options)
+    t.start()
+
+
 if __name__ == "__main__":
+    # Load the options and make sure we only start processing if we have valid data
+    while True:
+        load_options()
+        if options["version"] and options["device"]:
+            break
+        time.sleep(60)
+
     while True:
         process_new()
         process_invalid()
