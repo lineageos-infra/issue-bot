@@ -1,11 +1,9 @@
 import requests
-import json
 import re
 import time
 
 from datetime import datetime, timedelta
 from threading import Timer
-from urllib.parse import urlencode
 from bot import config
 
 headers = {"Private-Token": config.GITLAB_TOKEN}
@@ -32,7 +30,7 @@ def validate(description):
     errors = []
     labels = []
     seen = []
-    for line in re.sub("(<!--.*?-->)", "", description, flags=re.DOTALL).splitlines():
+    for line in re.sub(r"<!--.*?-->", "", description, flags=re.DOTALL).splitlines():
         if line.startswith("/") and " " in line:
             str_list = list(filter(None, line.split("/")))
             for pair in str_list:
@@ -69,8 +67,9 @@ def validate(description):
 def validate_version(label, value):
     if label != "version" or not value:
         return False, value
-    match = re.search("(?:lineage-)?((\d{2})(?:\.\d{1})?)(?:-20\d{6}-NIGHTLY-.+(?:\.zip)?)?", value)
-    version = None
+    match = re.search(
+        r"(?:lineage-)?((\d{2})(?:\.\d)?)(?:-20\d{6}-NIGHTLY-.+(?:\.zip)?)?", value
+    )
     if not match:
         return False, value
     version_full = match.group(1)
@@ -221,9 +220,11 @@ def load_valid_versions():
     for line in r.text.splitlines():
         if line is None or line == "" or line.startswith("#"):
             continue
-        result = re.match("^([\w\d]*?) (\w*?) ([\w\d\-.]*) (\w*)", line)
+        result = re.match(r"^\w*? \w*? ([\w\-.]*) \w*", line)
         if result:
-            branch_result = re.match(r"(?:lineage-)?((\d{2})(?:\.\d{1})?)", result.group(3))
+            branch_result = re.match(
+                r"(?:lineage-)?((\d{2})(?:\.\d)?)", result.group(1)
+            )
             if not branch_result:
                 continue
             branch_full = branch_result.group(1)
@@ -232,7 +233,7 @@ def load_valid_versions():
                 branch = branch_major
             else:
                 branch = branch_full
-            if not branch in new_options:
+            if branch not in new_options:
                 new_options.append(branch)
     if new_options:
         options["version"] = new_options
