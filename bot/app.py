@@ -58,10 +58,10 @@ def validate(description):
 def validate_version(label, value):
     if label != "version" or not value:
         return False, value
-    match = re.search("(lineage-)?(\d{2}\.\d{1})(-20\d{6}-NIGHTLY-.+(\.zip)?)?", value)
+    match = re.search("(?:lineage-)?(\d{2}\.\d{1})(?:-20\d{6}-NIGHTLY-.+(?:\.zip)?)?", value)
     version = None
     if match:
-        version = match.group(2)
+        version = match.group(1)
     if version in options[label]:
         return True, f"lineage-{version}"
     return False, value
