@@ -58,12 +58,16 @@ def validate(description):
 def validate_version(label, value):
     if label != "version" or not value:
         return False, value
-    match = re.search("(lineage-)?(\d{2}\.\d{1})(-20\d{6}-NIGHTLY-.+(\.zip)?)?", value)
+    match = re.search("(?:lineage-)?((\d{2})(?:\.\d{1})?)(?:-20\d{6}-NIGHTLY-.+(?:\.zip)?)?", value)
     version = None
-    if match:
-        version = match.group(2)
-    if version in options[label]:
-        return True, f"lineage-{version}"
+    if not match:
+        return False, value
+    version_full = match.group(1)
+    version_major = match.group(2)
+    if version_full in options[label]:
+        return True, f"lineage-{version_full}"
+    if version_major in options[label]:
+        return True, f"lineage-{version_major}"
     return False, value
 
 
@@ -175,7 +179,15 @@ def load_valid_versions():
             continue
         result = re.match("^([\w\d]*?) (\w*?) ([\w\d\-.]*) (\w*)", line)
         if result:
-            branch = result.group(3).replace("lineage-", "")
+            branch_result = re.match(r"(?:lineage-)?((\d{2})(?:\.\d{1})?)", result.group(3))
+            if not branch_result:
+                continue
+            branch_full = branch_result.group(1)
+            branch_major = branch_result.group(2)
+            if int(branch_major) >= 19:
+                branch = branch_major
+            else:
+                branch = branch_full
             if not branch in new_options:
                 new_options.append(branch)
     if new_options:
