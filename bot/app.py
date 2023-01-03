@@ -53,9 +53,16 @@ def validate(description):
                         if value in options[label] or already_valid:
                             labels.append(f"{label}:{value}")
                         elif value:
-                            errors.append(
-                                f"- {value} is not a valid {label}. Supported values are {options[label]}"
-                            )
+                            if label == "device":
+                                errors.append(
+                                    f"- '{value}' is not a valid device codename "
+                                    f"(like {', '.join(options[label][0:5])}, ...), see "
+                                    "https://wiki.lineageos.org/devices/"
+                                )
+                            else:
+                                errors.append(
+                                    f"- '{value}' is not a valid {label}. Supported values are {options[label]}"
+                                )
                     else:
                         labels.append(f"{label}")
     missing_labels = label_data.keys() - set(seen)
