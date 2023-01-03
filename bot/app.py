@@ -196,24 +196,7 @@ def process_invalid():
         print(f"invalid: {issue['web_url']}")
 
 
-def load_valid_devices():
-    global options
-    try:
-        new_options = [
-            x["model"]
-            for x in requests.get(
-                "https://raw.githubusercontent.com/LineageOS/hudson/master/updater/devices.json"
-            ).json()
-        ]
-    except requests.exceptions.RequestException as e:
-        print(e)
-        return
-
-    if new_options:
-        options["device"] = new_options
-
-
-def load_valid_versions():
+def load_valid_options():
     global options
     try:
         r = requests.get(
@@ -224,13 +207,15 @@ def load_valid_versions():
         return
 
     new_options = []
+    new_devices = []
     for line in r.text.splitlines():
         if line is None or line == "" or line.startswith("#"):
             continue
-        result = re.match(r"^\w*? \w*? ([\w\-.]*) \w*", line)
+        result = re.match(r"^(\w*?) \w*? ([\w\-.]*) \w*", line)
         if result:
+            new_devices.append(result.group(1))
             branch_result = re.match(
-                r"(?:lineage-)?((\d{2})(?:\.\d)?)", result.group(1)
+                r"(?:lineage-)?((\d{2})(?:\.\d)?)", result.group(2)
             )
             if not branch_result:
                 continue
@@ -244,11 +229,12 @@ def load_valid_versions():
                 new_options.append(branch)
     if new_options:
         options["version"] = new_options
+    if new_devices:
+        options["device"] = new_devices
 
 
 def load_options():
-    load_valid_versions()
-    load_valid_devices()
+    load_valid_options()
 
     # Do this again one day later once we got valid data
     if not options["version"] or not options["device"]:
