@@ -1,11 +1,9 @@
 import requests
-import json
 import re
 import time
 
 from datetime import datetime, timedelta
 from threading import Timer
-from urllib.parse import urlencode
 from bot import config
 
 headers = {"Private-Token": config.GITLAB_TOKEN}
@@ -32,23 +30,41 @@ def validate(description):
     errors = []
     labels = []
     seen = []
-    for line in re.sub("(<!--.*?-->)", "", description, flags=re.DOTALL).splitlines():
+    for line in re.sub(r"<!--.*?-->", "", description, flags=re.DOTALL).splitlines():
         if line.startswith("/") and " " in line:
-            label, value = line.split(" ")[0:2]
-            label = label[1:]
-            if value:
-                seen.append(label)
-            already_valid, value = validate_version(label, value)
-            if label in label_data.keys():
-                if label_data[label]["data"]:
-                    if value in options[label] or already_valid:
-                        labels.append(f"{label}:{value}")
-                    elif value:
+            str_list = list(filter(None, line.split("/")))
+            for pair in str_list:
+                if " " not in pair:
+                    continue
+                spaced = list(filter(None, pair.split(" ")))
+                if len(spaced) < 2:
+                    continue
+                label, value = spaced[0:2]
+                if value:
+                    if label in seen:
                         errors.append(
-                            f"- {value} is not a valid {label}. Supported values are {options[label]}"
+                            f"{label} is duplicated, please specify only one {label}"
                         )
-                else:
-                    labels.append(f"{label}")
+                    else:
+                        seen.append(label)
+                if label in label_data.keys():
+                    if label_data[label]["data"]:
+                        already_valid, value = validate_version(label, value)
+                        if value in options[label] or already_valid:
+                            labels.append(f"{label}:{value}")
+                        elif value:
+                            if label == "device":
+                                errors.append(
+                                    f"- '{value}' is not a valid device codename "
+                                    f"(like {', '.join(options[label][0:5])}, ...), see "
+                                    "https://wiki.lineageos.org/devices/"
+                                )
+                            else:
+                                errors.append(
+                                    f"- '{value}' is not a valid {label}. Supported values are {options[label]}"
+                                )
+                    else:
+                        labels.append(f"{label}")
     missing_labels = label_data.keys() - set(seen)
     for label in missing_labels:
         errors.append(label_data[label]["error"])
@@ -58,8 +74,9 @@ def validate(description):
 def validate_version(label, value):
     if label != "version" or not value:
         return False, value
-    match = re.search("(?:lineage-)?((\d{2})(?:\.\d{1})?)(?:-20\d{6}-NIGHTLY-.+(?:\.zip)?)?", value)
-    version = None
+    match = re.search(
+        r"(?:lineage-)?((\d{2})(?:\.\d)?)(?:-20\d{6}-NIGHTLY-.+(?:\.zip)?)?", value
+    )
     if not match:
         return False, value
     version_full = match.group(1)
@@ -72,30 +89,45 @@ def validate_version(label, value):
 
 
 def post_reply(iid, reply):
-    resp = requests.post(
-        f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}/notes",
-        json={"body": "\n".join(reply)},
-        headers=headers,
-    )
+    try:
+        resp = requests.post(
+            f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}/notes",
+            json={"body": "\n".join(reply)},
+            headers=headers,
+        )
+    except requests.exceptions.RequestException as e:
+        print(e)
+        return
+
     if resp.status_code != 201:
         print(f"Error replying - ${resp.json()}")
 
 
 def edit_issue(iid, edits):
-    resp = requests.put(
-        f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}",
-        json=edits,
-        headers=headers,
-    )
+    try:
+        resp = requests.put(
+            f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}",
+            json=edits,
+            headers=headers,
+        )
+    except requests.exceptions.RequestException as e:
+        print(e)
+        return
+
     if resp.status_code != 200:
         print(f"Error updating labels - ${resp.json()}")
 
 
 def process_new():
-    resp = requests.get(
-        f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=None",
-        headers=headers,
-    )
+    try:
+        resp = requests.get(
+            f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=None",
+            headers=headers,
+        )
+    except requests.exceptions.RequestException as e:
+        print(e)
+        return
+
     if resp.status_code != 200:
         print(f"Error getting issues - {resp.json()}")
         return
@@ -106,7 +138,10 @@ def process_new():
             labels.append("invalid")
             reply = (
                 [
-                    "Hi! It appears you didn't read or follow the provided issue template. Your issue has been marked as invalid. You can either edit your issue to include the requested fields and reopen it, or create a new issue following the provided template. For more information, please see https://wiki.lineageos.org/bugreport-howto.html",
+                    "Hi! It appears you didn't read or follow the provided issue template."
+                    "Your issue has been marked as invalid. Please edit your issue to include "
+                    "the requested fields and follow the provided template, then reopen it."
+                    "For more information please see https://wiki.lineageos.org/how-to/bugreport",
                     "",
                     "Problems:",
                     "",
@@ -125,10 +160,15 @@ def process_new():
 
 
 def process_invalid():
-    resp = requests.get(
-        f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=invalid",
-        headers=headers,
-    )
+    try:
+        resp = requests.get(
+            f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=invalid",
+            headers=headers,
+        )
+    except requests.exceptions.RequestException as e:
+        print(e)
+        return
+
     if resp.status_code != 200:
         print(f"Error getting invalid issues - {resp.json()}")
         return
@@ -156,30 +196,27 @@ def process_invalid():
         print(f"invalid: {issue['web_url']}")
 
 
-def load_valid_devices():
+def load_valid_options():
     global options
-    new_options = [
-        x["model"]
-        for x in requests.get(
-            "https://raw.githubusercontent.com/LineageOS/hudson/master/updater/devices.json"
-        ).json()
-    ]
-    if new_options:
-        options["device"] = new_options
+    try:
+        r = requests.get(
+            "https://raw.githubusercontent.com/LineageOS/hudson/master/lineage-build-targets"
+        )
+    except requests.exceptions.RequestException as e:
+        print(e)
+        return
 
-
-def load_valid_versions():
-    global options
-    r = requests.get(
-        "https://raw.githubusercontent.com/LineageOS/hudson/master/lineage-build-targets"
-    )
     new_options = []
+    new_devices = []
     for line in r.text.splitlines():
         if line is None or line == "" or line.startswith("#"):
             continue
-        result = re.match("^([\w\d]*?) (\w*?) ([\w\d\-.]*) (\w*)", line)
+        result = re.match(r"^(\w*?) \w*? ([\w\-.]*) \w*", line)
         if result:
-            branch_result = re.match(r"(?:lineage-)?((\d{2})(?:\.\d{1})?)", result.group(3))
+            new_devices.append(result.group(1))
+            branch_result = re.match(
+                r"(?:lineage-)?((\d{2})(?:\.\d)?)", result.group(2)
+            )
             if not branch_result:
                 continue
             branch_full = branch_result.group(1)
@@ -188,15 +225,16 @@ def load_valid_versions():
                 branch = branch_major
             else:
                 branch = branch_full
-            if not branch in new_options:
+            if branch not in new_options:
                 new_options.append(branch)
     if new_options:
         options["version"] = new_options
+    if new_devices:
+        options["device"] = new_devices
 
 
 def load_options():
-    load_valid_versions()
-    load_valid_devices()
+    load_valid_options()
 
     # Do this again one day later once we got valid data
     if not options["version"] or not options["device"]:
