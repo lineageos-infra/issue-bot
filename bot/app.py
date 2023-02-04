@@ -95,12 +95,12 @@ def post_reply(iid, reply):
             json={"body": "\n".join(reply)},
             headers=headers,
         )
+        if resp.status_code != 201:
+            print(f"Error replying - ${resp.json()}")
     except requests.exceptions.RequestException as e:
         print(e)
-        return
-
-    if resp.status_code != 201:
-        print(f"Error replying - ${resp.json()}")
+    except requests.exceptions.JSONDecodeError:
+        print(f"Error replying - status  {resp.status_code}")
 
 
 def edit_issue(iid, edits):
@@ -110,12 +110,12 @@ def edit_issue(iid, edits):
             json=edits,
             headers=headers,
         )
+        if resp.status_code != 200:
+            print(f"Error updating labels - ${resp.json()}")
     except requests.exceptions.RequestException as e:
         print(e)
-        return
-
-    if resp.status_code != 200:
-        print(f"Error updating labels - ${resp.json()}")
+    except requests.exceptions.JSONDecodeError:
+        print(f"Error updating labels - status  {resp.status_code}")
 
 
 def process_new():
@@ -124,13 +124,15 @@ def process_new():
             f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=None",
             headers=headers,
         )
+        if resp.status_code != 200:
+            print(f"Error updating labels - ${resp.json()}")
     except requests.exceptions.RequestException as e:
         print(e)
         return
-
-    if resp.status_code != 200:
-        print(f"Error getting issues - {resp.json()}")
+    except requests.exceptions.JSONDecodeError:
+        print(f"Error replying - status  {resp.status_code}")
         return
+
     for issue in resp.json():
         labels, errors = validate(issue["description"])
         reply = None
@@ -165,14 +167,15 @@ def process_invalid():
             f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=invalid",
             headers=headers,
         )
-    except requests.exceptions.RequestException as e:
+        if resp.status_code != 200:
+            print(f"Error getting invalid issues - {resp.json()}")
+            return
+        issues = resp.json()
+    except requests.exceptions.RequestException | requests.exceptions.JSONDecodeError as e:
         print(e)
         return
 
-    if resp.status_code != 200:
-        print(f"Error getting invalid issues - {resp.json()}")
-        return
-    for issue in resp.json():
+    for issue in issues:
         labels, errors = validate(issue["description"])
         reply = None
         if errors:
