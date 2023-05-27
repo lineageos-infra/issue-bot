@@ -94,6 +94,7 @@ def post_reply(iid, reply):
             f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}/notes",
             json={"body": "\n".join(reply)},
             headers=headers,
+            timeout=10,
         )
         if resp.status_code != 201:
             print(f"Error replying - ${resp.json()}")
@@ -109,6 +110,7 @@ def edit_issue(iid, edits):
             f"https://gitlab.com/api/v4/projects/{project}/issues/{iid}",
             json=edits,
             headers=headers,
+            timeout=10,
         )
         if resp.status_code != 200:
             print(f"Error updating labels - ${resp.json()}")
@@ -123,6 +125,7 @@ def process_new():
         resp = requests.get(
             f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=None",
             headers=headers,
+            timeout=10,
         )
         if resp.status_code != 200:
             print(f"Error updating labels - ${resp.json()}")
@@ -166,6 +169,7 @@ def process_invalid():
         resp = requests.get(
             f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened&labels=invalid",
             headers=headers,
+            timeout=10,
         )
         if resp.status_code != 200:
             print(f"Error getting invalid issues - {resp.json()}")
@@ -203,7 +207,8 @@ def load_valid_options():
     global options
     try:
         r = requests.get(
-            "https://raw.githubusercontent.com/LineageOS/hudson/master/lineage-build-targets"
+            "https://raw.githubusercontent.com/LineageOS/hudson/master/lineage-build-targets",
+            timeout=10,
         )
     except requests.exceptions.RequestException as e:
         print(e)
