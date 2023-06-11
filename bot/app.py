@@ -175,7 +175,7 @@ def process_invalid():
             print(f"Error getting invalid issues - {resp.json()}")
             return
         issues = resp.json()
-    except requests.exceptions.RequestException | requests.exceptions.JSONDecodeError as e:
+    except Exception as e:
         print(e)
         return
 
