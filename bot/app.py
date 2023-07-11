@@ -49,6 +49,7 @@ def validate(description):
                         seen.append(label)
                 if label in label_data.keys():
                     if label_data[label]["data"]:
+                        value = next((x for x in options[label] if x.casefold() == value.casefold()), value)
                         already_valid, value = validate_version(label, value)
                         if value in options[label] or already_valid:
                             labels.append(f"{label}:{value}")
