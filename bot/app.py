@@ -144,9 +144,9 @@ def process_new():
             labels.append("invalid")
             reply = (
                 [
-                    "Hi! It appears you didn't read or follow the provided issue template."
+                    "Hi! It appears you didn't read or follow the provided issue template. "
                     "Your issue has been marked as invalid. Please edit your issue to include "
-                    "the requested fields and follow the provided template, then reopen it."
+                    "the requested fields and follow the provided template, then reopen it. "
                     "For more information please see https://wiki.lineageos.org/how-to/bugreport",
                     "",
                     "Problems:",
