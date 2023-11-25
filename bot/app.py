@@ -208,7 +208,7 @@ def load_valid_options():
     global options
     try:
         r = requests.get(
-            "https://raw.githubusercontent.com/LineageOS/hudson/master/lineage-build-targets",
+            "https://raw.githubusercontent.com/LineageOS/hudson/main/lineage-build-targets",
             timeout=10,
         )
     except requests.exceptions.RequestException as e:
