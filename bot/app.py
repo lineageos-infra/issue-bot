@@ -218,9 +218,9 @@ def load_valid_options():
     new_options = []
     new_devices = []
     for line in r.text.splitlines():
-        if line is None or line == "" or line.startswith("#"):
+        if line is None or line == "" or line.startswith("# "):
             continue
-        result = re.match(r"^(\w*?) \w*? ([\w\-.]*) \w*", line)
+        result = re.match(r"^#?(\w*?) \w*? ([\w\-.]*) \w*", line)
         if result:
             new_devices.append(result.group(1))
             branch_result = re.match(
