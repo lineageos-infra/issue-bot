@@ -40,6 +40,8 @@ def validate(description):
                 if len(spaced) < 2:
                     continue
                 label, value = spaced[0:2]
+                if label == "codename":
+                    label = "device"
                 if value:
                     if label in seen:
                         errors.append(
