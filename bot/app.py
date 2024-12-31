@@ -13,7 +13,7 @@ options = {"version": [], "device": []}
 label_data = {
     "device": {
         "data": True,
-        "error": "- A device is required. (include /device devicecodename)",
+        "error": "- A device codename is required. (include /codename devicecodename)",
     },
     "version": {
         "data": True,
@@ -45,7 +45,7 @@ def validate(description):
                 if value:
                     if label in seen:
                         errors.append(
-                            f"{label} is duplicated, please specify only one {label}"
+                            f"- '{label}' is duplicated, please specify only one {label}"
                         )
                     else:
                         seen.append(label)
