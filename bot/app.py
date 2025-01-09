@@ -132,6 +132,7 @@ def process_new():
         )
         if resp.status_code != 200:
             print(f"Error updating labels - ${resp.json()}")
+            return
     except requests.exceptions.RequestException as e:
         print(e)
         return
