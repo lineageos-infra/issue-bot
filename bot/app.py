@@ -183,21 +183,6 @@ def process_invalid():
         print(e)
         return
 
-    if not issues:
-        try:
-            resp = requests.get(
-                f"https://gitlab.com/api/v4/projects/{project}/issues?state=opened",
-                headers=headers,
-                timeout=10,
-            )
-            if resp.status_code != 200:
-                print(f"Error getting invalid issues - {resp.json()}")
-                return
-            issues = filter(lambda x: "invalid" in x["labels"], resp.json())
-        except Exception as e:
-            print(e)
-            return
-
     for issue in issues:
         labels, errors = validate(issue["description"])
         reply = None
